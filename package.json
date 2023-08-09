@@ -1,0 +1,32 @@
+{
+  "name": "vbotn",
+  "version": "0.0.1",
+  "description": "",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/entyen/vbotn.git"
+  },
+  "keywords": [
+    "bot",
+    "vk"
+  ],
+  "author": "Entyen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/entyen/vbotn/issues"
+  },
+  "homepage": "https://github.com/entyen/vbotn#readme",
+  "dependencies": {
+    "cron": "^2.4.0",
+    "mongoose": "^7.4.2",
+    "node-vk-bot-api": "^3.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

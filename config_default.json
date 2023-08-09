@@ -1,0 +1,9 @@
+{
+  "TOKEN": "TOKEN",
+  "GROUP_ID": "GROUP_ID",
+  "OWNER": "OWNER_ID",
+  "SERVER": "127.0.0.1:27017",
+  "DB": "MONGODB",
+  "DBUSER": "MONGOUSER",
+  "DBPASS": "MONGOPASS"
+}
