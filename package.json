@@ -25,6 +25,7 @@
     "axios": "^1.4.0",
     "cron": "^2.4.0",
     "mongoose": "^7.4.2",
+    "mongoose-sequence": "github:amansingh63/mongoose-sequence",
     "node-vk-bot-api": "^3.5.0"
   },
   "devDependencies": {
