@@ -20,12 +20,20 @@ const bot = new VkBot({
 })
 
 //utils
+
+/**
+ * Localisation Utill
+ * @param {String} ctx language check from user context
+ * @param {String} string localisation value
+ * @param  {...any} vars any vars inside localisation
+ * @returns 
+ */
 function getLocale(ctx, string, ...vars) {
   const ulang = ctx.account
     ? ctx.account.lang
     : ctx.clientInfo.lang_id == 0
-    ? "ru"
-    : "ru" // "en"
+      ? "ru"
+      : "ru" // "en" // TODO
   let lang = require(`./lang/${ulang}.json`)
 
   lang = lang[string] || lang["noTranslateOrError"]
@@ -40,6 +48,15 @@ function getLocale(ctx, string, ...vars) {
     }
   })
   return lang
+}
+
+/**
+ * Timeout Promise
+ * @param {Number} ms 
+ * @returns 
+ */
+function timeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 bot.use(async (ctx, next) => {
@@ -77,11 +94,11 @@ const scene = new Scene(
   "createChar",
   async (ctx) => {
     ctx.scene.next()
-    
-    await ctx.reply('0')
+
+    await ctx.reply('', "photo-206762312_457239120", Markup.keyboard([]))
     await ctx.reply(
       getLocale(ctx, "start"),
-      "https://sun1-90.userapi.com/impg/zX10__3RRK-5p8yTDoK2sBJz9V9L3dIIzEzHNg/EtkR0kjuuPg.jpg",
+      null,
       Markup.keyboard([
         Markup.button(getLocale(ctx, "gender").male, "default", "male"),
         Markup.button(getLocale(ctx, "gender").female, "default", "female"),
@@ -89,54 +106,165 @@ const scene = new Scene(
     )
   },
   (ctx) => {
-    ctx.session.gender = ctx.message.payload
+    ctx.session.gender = ctx.message.payload.replaceAll("\"", "")
 
-    ctx.scene.next()
-    ctx.reply(
-      getLocale(ctx, "raceSelect"),
-      null,
-      Markup.keyboard([
-        Markup.button(getLocale(ctx, "race").elf, "default", "elf"),
-        Markup.button(getLocale(ctx, "race").dwarf, "default", "dwarf"),
-        Markup.button(getLocale(ctx, "race").human, "default", "human"),
-        Markup.button(getLocale(ctx, "race").ork, "default", "ork"),
-      ]).inline()
-    )
+    const regExp = /male|female/
+    if (!regExp.test(ctx.session.gender)) {
+      console.log(ctx.scene.step)
+    } else {
+      ctx.scene.next()
+      ctx.reply(
+        getLocale(ctx, "raceSelect"),
+        null,
+        Markup.keyboard([
+          Markup.button(getLocale(ctx, "race").elf, "default", "elf"),
+          Markup.button(getLocale(ctx, "race").dwarf, "default", "dwarf"),
+          Markup.button(getLocale(ctx, "race").human, "default", "human"),
+          Markup.button(getLocale(ctx, "race").ork, "default", "ork"),
+        ]).inline()
+      )
+    }
   },
   (ctx) => {
-    ctx.session.race = ctx.message.payload
+    ctx.session.race = ctx.message.payload.replaceAll("\"", "")
 
-    ctx.scene.next()
-    ctx.reply(getLocale(ctx, "nameSelect"))
+    const regExp = /elf|dwarf|human|ork/
+    if (!regExp.test(ctx.session.race)) {
+      console.log(ctx.scene.step)
+    } else {
+      ctx.scene.next()
+      ctx.reply(getLocale(ctx, "nameSelect"))
+    }
   },
   async (ctx) => {
     ctx.session.name = ctx.message.text
 
-    ctx.scene.leave()
-    await ctx.reply(`${ctx.session.name}, ${ctx.session.race}, ${ctx.session.gender}`)
-    await ctx.reply('Уважаемый путник, в это мгновенье, когда мир еще обретает свои очертания, словно нежное ткацкое полотно, прошу терпеливо пребывать в ожидании...')
+    const badwords = require("./lang/badwords.json")
+    const checkBadword = !!badwords.find((c) => c == ctx.session.name) || ctx.session.name.length < 3
+    if (checkBadword) ctx.session.name = undefined
+
+    const nameUnavaible = await Char.findOne({ name: ctx.session.name })
+    if (nameUnavaible) ctx.session.name = undefined
+
+    const nicknameRegEx = /^[a-zA-Zа-яА-Я]+$/;
+    if (!nicknameRegEx.test(ctx.session.name) || !ctx.session.name) {
+      await ctx.reply('Неверное имя')
+    } else {
+      ctx.scene.next()
+      const race = getLocale(ctx, "race")[ctx.session.race]
+      const gender = getLocale(ctx, "gender")[ctx.session.gender + "R"]
+      await ctx.reply(getLocale(ctx, "selectLore", race, gender, ctx.session.name), null,
+        Markup.keyboard([
+          Markup.button(getLocale(ctx, "approve").yes, "default", "yes"),
+          Markup.button(getLocale(ctx, "approve").no, "default", "no"),
+        ]).inline())
+    }
+  },
+  async (ctx) => {
+    ctx.session.selectedApprove = ctx.message.payload.replaceAll("\"", "")
+    if (ctx.session.selectedApprove == "yes") {
+      ctx.scene.next()
+      await ctx.reply(getLocale(ctx, "selectLore1"), "photo-206762312_457239120")
+      await timeout(4000)
+      await ctx.reply(getLocale(ctx, "selectTravel"), "photo-206762312_457239120")
+      await ctx.reply(getLocale(ctx, "selectTravel1"))
+      await timeout(4000)
+      ctx.reply(getLocale(ctx, "selectTravel2"), null, Markup.keyboard([Markup.button("Отдохнуть", "default", "relax"), Markup.button("Не отдыхать", "default", "norelax")]).inline())
+    } else {
+      ctx.scene.leave()
+      await ctx.reply(getLocale(ctx, "selectNo"), null, Markup.keyboard([Markup.button("Начать", "default", "start")]))
+    }
+  },
+  async (ctx) => {
+    ctx.session.relaxed = ctx.message.payload == "\"relax\"" ? 'yes' : ctx.message.payload == "\"norelax\"" ? 'no' : false
+
+    if (ctx.session.relaxed) {
+      ctx.scene.next()
+      await ctx.reply(getLocale(ctx, ctx.session.relaxed == "yes" ? "selectRelaxed" : "selectNoRelaxed"))
+      await timeout(4000)
+      await ctx.reply(getLocale(ctx, "selectSearchBTN"), null, Markup.keyboard([Markup.button("Отправится на поиски", "default", "searching"), Markup.button("Бежать дальше", "default", "nosearching")]).inline())
+    }
+  },
+  async (ctx) => {
+    ctx.session.searching = ctx.message.payload == "\"searching\"" ? "yes" : ctx.message.payload == "\"nosearching\"" ? "no" : false
+
+    if (ctx.session.searching) {
+      ctx.scene.leave()
+      await ctx.reply(getLocale(ctx, "selectFind"))
+      await timeout(4000)
+      await Char.create({
+        name: ctx.session.name,
+        race: ctx.session.race,
+        gender: ctx.session.gender,
+        energy: ctx.session.relaxed == "yes" ? 100 : 0,
+        maxEnergy: ctx.session.relaxed == "yes" ? 100 : 110
+      }).then(async (x) => {
+        ctx.account.char.unshift({ _id: x._id, equiped: true })
+        await ctx.account.save()
+      })
+      await ctx.reply(getLocale(ctx, ctx.session.searching == "yes" ? "selectEnd" : "selectEndAlt"), null, Markup.keyboard([Markup.button("Начать", "default", "start")]))
+    }
   }
 )
+
 const stage = new Stage(scene)
 
 bot.use(session.middleware())
 bot.use(stage.middleware())
 
-bot.command(["start", "начать"], (ctx) => {
+bot.command(["start", "начать"], async (ctx) => {
   if (!ctx.account.char[0]) {
     ctx.scene.enter("createChar")
+  } else if (ctx.account.char[0]) {
+    const eqChar = ctx.account.char.filter((x) => x.equiped == true)
+    const char = await Char.findById(eqChar[0]._id)
+    ctx.reply(
+      `Персонаж: ${char.name}\nУровень: ${char.lvl}\nЭнергии: ${char.energy}`,
+      null,
+      Markup.keyboard([Markup.button("Начать", "default", "start")])
+    )
+    console.log(char)
+  } else {
+    ctx.reply(
+      "Приветствую тебя, уважаемый путник, в это мгновенье, когда мир еще обретает свои очертания, словно нежное ткацкое полотно, прошу терпеливо пребывать в ожидании...",
+      null,
+      Markup.keyboard([Markup.button("Начать", "default", "start")])
+    )
   }
-  // ctx.reply(
-  //   "Приветствую тебя, уважаемый путник, в это мгновенье, когда мир еще обретает свои очертания, словно нежное ткацкое полотно, прошу терпеливо пребывать в ожидании...",
-  //   null,
-  //   Markup.keyboard([Markup.button("Начать", "default", "start")])
-  // )
 })
 
-bot.on((ctx) => {
-  const text_cmd = ctx.message.text
-  if (text_cmd == "hui") {
-    ctx.reply("hui")
+bot.on(async (ctx) => {
+  const textCmd = ctx.message.text.split(' ')[0].toLowerCase()
+  if (textCmd == "mob") {
+    const vars = ctx.message.text.split(' ').slice(1)
+    const mobLvl = +vars[0] || 1
+    let iteration = 0
+    userstat = {
+      hp: 100,
+      dmg: 1,
+      def: 6
+    }
+    mobstat = {
+      hp: 40 * mobLvl,
+      dmg: 1 * mobLvl,
+      def: 1 * mobLvl
+    }
+    const dmgCalc = (dmg, def) => {
+      if ((dmg - def) < 0) return 0
+      return (dmg - def)
+    }
+    let userDmg = dmgCalc(userstat.dmg, mobstat.def)
+    let mobDmg = dmgCalc(mobstat.dmg, userstat.def)
+    while (userstat.hp > 0 && mobstat.hp > 0) {
+      iteration++
+      if (userDmg <= 0 && mobDmg <= 0) break;
+      mobstat.hp -= userDmg
+      userstat.hp -= mobDmg
+      if (mobstat.hp < 0) mobstat.hp = 0
+      if (userstat.hp < 0) userstat.hp = 0
+    }
+    const fightState = userstat.hp > 0 ? "WON" : "LOOSE"
+    ctx.reply(`Test Fight u ${fightState}\nUser: HP ${userstat.hp}\nMob ${mobLvl}: HP ${mobstat.hp}\nFight Stat: ${iteration} iterasion`)
   } else return
 })
 

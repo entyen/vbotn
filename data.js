@@ -6,16 +6,57 @@ const accountSchem = new mongoose.Schema({
   uid: { type: Number, unique: true },
   acclvl: { type: Number, default: 0 },
   lang: { type: String, default: 'ru' },
-  char: [{ type: mongoose.Schema.Types.ObjectId, ref: "characters" }],
+  char: [
+    {
+      _id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'characters',
+        required: true,
+      },
+      equiped: { type: Boolean, default: false },
+    }],
   lastActivity: { type: Date },
 })
 
 const charSchem = new mongoose.Schema({
-  nickname: { type: String },
-  race: { type: String },
+  name: { type: String, unique: true, require: true },
+  race: { type: String, require: true },
+  gender: { type: String, require: true },
   lvl: { type: Number, default: 1 },
-  charname: { type: String, unique: true, require: true },
-  inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: "items" }],
+  exp: { type: Number, default: 0 },
+  hp: { type: Number, default: 100 },
+  mp: { type: Number, default: 100 },
+  energy: { type: Number, default: 100 },
+  maxEnergy: { type: Number, default: 100 },
+  char: {
+    hpMax: { type: Number, default: 100 },
+    mpMax: { type: Number, default: 100 },
+    f_atk: { type: Number },
+    m_atk: { type: Number },
+    f_def: { type: Number },
+    m_def: { type: Number },
+    acc: { type: Number },
+    ev: { type: Number },
+  },
+  stat: {
+    str: { type: Number },
+    int: { type: Number },
+    con: { type: Number },
+    luc: { type: Number },
+    chr: { type: Number },
+  },
+  inventory: [
+    {
+      item: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'items',
+        required: true,
+      },
+      quantity: { type: Number, default: 0 },
+      ench: { type: Number, default: 0, min: -1, max: 20 },
+      equiped: { type: Boolean, default: false },
+    },
+  ],
 })
 
 accountSchem.plugin(AutoIncrement, { inc_field: "uid", start_seq: 527100 })
